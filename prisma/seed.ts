@@ -3,9 +3,15 @@ import bcrypt from 'bcryptjs';
 
 const Decimal = Prisma.Decimal;
 
-const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL!,
-});
+// Support both Prisma Postgres and standard PostgreSQL
+const databaseUrl = process.env.DATABASE_URL!;
+const isPrismaPostgres = databaseUrl?.startsWith('prisma+postgres://');
+
+const prisma = new PrismaClient(
+  isPrismaPostgres
+    ? { accelerateUrl: databaseUrl }
+    : {} as Parameters<typeof PrismaClient>[0]
+);
 
 async function main() {
   console.log('Seeding database...');
