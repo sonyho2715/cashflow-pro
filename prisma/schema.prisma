@@ -1,0 +1,109 @@
+// CashFlow Pro - Insurance Affordability Calculator
+// Database schema for managing users, businesses, and analyses
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User model for authentication
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         Role     @default(USER)
+  plan         Plan     @default(PROFESSIONAL)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  businesses Business[]
+  analyses   Analysis[]
+
+  @@map("users")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Plan {
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+// Business model for client companies
+model Business {
+  id            String   @id @default(cuid())
+  industry      String
+  companyName   String?
+  annualRevenue Decimal  @db.Decimal(15, 2)
+  employees     Int?
+  location      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  userId   String
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses Analysis[]
+
+  @@index([userId])
+  @@map("businesses")
+}
+
+// Analysis model for cash flow assessments
+model Analysis {
+  id                   String         @id @default(cuid())
+  status               AnalysisStatus @default(DRAFT)
+  riskTolerance        RiskTolerance  @default(MODERATE)
+
+  // Financial inputs
+  grossRevenue         Decimal?       @db.Decimal(15, 2)
+  operatingExpenses    Decimal?       @db.Decimal(15, 2)
+  debtPayments         Decimal?       @db.Decimal(15, 2)
+  ownerCompensation    Decimal?       @db.Decimal(15, 2)
+  taxObligations       Decimal?       @db.Decimal(15, 2)
+
+  // Calculated results
+  discretionaryCashFlow Decimal?      @db.Decimal(15, 2)
+  recommendedPremium    Decimal?      @db.Decimal(15, 2)
+  affordabilityScore    Int?          // 0-100
+  recommendation        String?
+
+  // Report
+  reportGeneratedAt    DateTime?
+  reportUrl            String?
+
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  // Relations
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([userId])
+  @@map("analyses")
+}
+
+enum AnalysisStatus {
+  DRAFT
+  IN_PROGRESS
+  ANALYZED
+  REPORTED
+}
+
+enum RiskTolerance {
+  CONSERVATIVE  // 50%
+  MODERATE      // 75%
+  AGGRESSIVE    // 100%
+}
