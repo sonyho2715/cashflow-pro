@@ -1,17 +1,25 @@
 import { PrismaClient, Prisma } from '../app/generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 
 const Decimal = Prisma.Decimal;
 
 // Support both Prisma Postgres and standard PostgreSQL
-const databaseUrl = process.env.DATABASE_URL!;
-const isPrismaPostgres = databaseUrl?.startsWith('prisma+postgres://');
+const databaseUrl = process.env.DATABASE_URL || '';
+const isPrismaPostgres = databaseUrl.startsWith('prisma+postgres://');
 
-const prisma = new PrismaClient(
-  isPrismaPostgres
-    ? { accelerateUrl: databaseUrl }
-    : {} as Parameters<typeof PrismaClient>[0]
-);
+function createPrismaClient(): PrismaClient {
+  if (isPrismaPostgres) {
+    return new PrismaClient({ accelerateUrl: databaseUrl });
+  } else {
+    const pool = new Pool({ connectionString: databaseUrl });
+    const adapter = new PrismaPg(pool);
+    return new PrismaClient({ adapter });
+  }
+}
+
+const prisma = createPrismaClient();
 
 async function main() {
   console.log('Seeding database...');
